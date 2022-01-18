@@ -1,68 +1,57 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-"""handles command line parameters and prompting
+"""command line parameter storage and prompting for scripts.
 
-This component handles parameter input from the user, and storage and
-retrieval of parameters from disk files. This gives scripts a memory
-and can save a lot of typing, especially with frequently invoked
-scripts.
+It can be useful to have scripts that remember their parameters from
+one invocation to the next. The package enables such a facility by
+storage and retrieval of parameter values in disk files. It provides a
+way to define named parameters, defaults and ranges, and allows
+parameters to be hidden by default if need be.
 
-Classes
-=======
+Example code, in which three para::
 
-Cline      -- the main class for parameter input
-ClineError -- Exception class, inherited from HipercamError
-Fname      -- class for enabling checks on file names
+  >> import sys
+  >> from trm.cline import Cline
+  >>
+  >> # get command name
+  >> comm = sys.argv.pop(0) 
+  >>
+  >> with Cline('COMM_ENV', '.comm', comm, sys.argv) as cl:
+  >>
+  >>   # register parameters
+  >>   cl.register('device', Cline.GLOBAL, Cline.HIDE)
+  >>   cl.register('npoint', Cline.LOCAL, Cline.PROMPT)
+  >>   cl.register('output', Cline.LOCAL, Cline.PROMPT)
+  >>
+  >>   # get inputs
+  >>   device = cl.get_value('device', 'plot device', '/xs')
+  >>   npoint = cl.get_value('npoint', 'number of points', 10, 1, 100)
+  >>   output = cl.get_value('output', 'output file', 'save.dat')
+  >>
+  >> # rest of program follows ...
 
-Functions
-=========
+If this is invoked in a script called 'script.py' then the following are
+all ways to invoke it:
 
-clist      -- split up a command string appropriately for Cline
+script.py<cr>
+script.py device=/ps npoint=20<cr>
+script.py device=/ps \\<cr>
+script.py 25<cr>
 
-Examples of parameter input
-===========================
+The first would prompt for 'npoint' and 'output'; the second for just
+'output'; the third would not prompt for any of them; the fourth would
+set npoint=25, and device='/ps' from the earlier invocations.
 
-Here are some examples of usage to illustrate this:
+A number of special keyword arguments can be used on the command line.
+They are::
 
-A command with inputs 'device' (hidden), 'npoint' and 'output' could be
-invoked variously as
+  list : lists all the parameter values used
 
-command<cr>
+  nodefs : bypasses any attempt to read or write the default files.  It is
+      provided as a way to avoid clashes between multiple processes.
 
-(npoint and output will be prompted for)
-
-or
-
-command device=/ps npoint=20<cr>
-
-(output will be prompted for)
-
-or 
-
-command device=/ps \\<cr>
-
-(\ indicates take default values for npoint and output, in UNIX shells it must
-be escaped hence \\)
-
-or
-
-command 20<cr>
-
-(npoint will be set = 20, output will be prompted for). Note that such unnamed
-parameters can only set the values of parameters which are by default prompted
-for. Hidden parameters must always be explicitly named to specify them on the
-command line.
-
-There are a number of special keyword arguments, that have a special meaning.
-They are:
-
-  list    : lists all the parameter values used
-
-  nodefs  : bypasses any attempt to read or write the default files.  It is
-            provided as a way to avoid clashes between multiple processes.
-
-  prompt  : forces prompting for all variables not supplied via the argument
-            list passed on creation of Cline objects.
+  prompt : forces prompting for all variables not supplied via the argument
+      list passed on creation of Cline objects.
 
 When you get prompting, <tab> allows you to complete filenames. Entering '?'
 gives the parameter range if any has been supplied.
@@ -88,8 +77,8 @@ readline.parse_and_bind("tab: complete")
 # readline.set_completer(complete)
 
 def add_extension(fname, ext):
-    """Add extension ext to a file name if it is not already there, and returns
-    the revised name
+    """Add extension ext to a file name if it is not already there, and
+    returns the revised name
 
     """
     if len(ext) and not fname.endswith(ext):
@@ -98,8 +87,8 @@ def add_extension(fname, ext):
         return fname
 
 def sub_extension(fname, ext):
-    """Subtracts extension ext from a file name if it is present, and returns
-    the revised name
+    """Subtracts extension ext from a file name if it is present, and
+    returns the revised name
 
     """
     if fname.endswith(ext):
@@ -108,10 +97,10 @@ def sub_extension(fname, ext):
         return fname
 
 def clist(command):
-    """Splits up a command string returning a list suitable for constructing
-    Cline objects. The reason for using this rather than a simple string split
-    is that it allows you to use double quotes to get strings with spaces
-    through. Returns a list of strings.
+    """Splits up a command string returning a list suitable for
+    constructing Cline objects. The reason for using this rather than
+    a simple string split is that it allows you to use double quotes
+    to get strings with spaces through. Returns a list of strings.
 
     """
 
@@ -119,15 +108,16 @@ def clist(command):
     return [c.lstrip('"').rstrip('"') for c in cl]
 
 def script_args(args):
-    """
-    This is a small helper method that is used at the start of most
-    of the HiPERCAM entry point scripts such as 'reduce' and 'grab'.
+    """This is a small helper method to use at the start of an entry
+    point script.
 
-    If 'args' is None on entry, it is replaced by 'sys.argv'. It is then
-    assumed that the first argument is the command name or else None. The
-    command name argument is removed from args, and if not None, converted to just the
-    file part of the path. It is then returned along with the remaining list
-    of arguments in a two element tuple, i.e. (commands, args).
+    If 'args' is None on entry, it is replaced by 'sys.argv'. It is
+    then assumed that the first argument is the command name or else
+    None. The command name argument is removed from args, and if not
+    None, converted to just the file part of the path. It is then
+    returned along with the remaining list of arguments in a two
+    element tuple, i.e. (commands, args).
+
     """
     if args is None:
         args = sys.argv.copy()
@@ -141,38 +131,16 @@ def script_args(args):
 
 class Cline:
 
-    """Class to handle command line inputs. In particular this allows storage and
-    retrieval of input parameter values from files which allows different
-    scripts to communicate parameters to each other through 'global' defaults,
-    and commands to have a 'memory' between different invocations. To use the
-    class you first create an instance, then register each parameter name, and
-    finally get the input, either from the user, default values or disk. Cline
-    can be (and is best) invoked as a context manager with "with" as shown
-    below.  This defines a clean 'get inputs' section and saves the values
-    when it goes out of context.
-
-    Here is some example code::
-
-      >> from trm import cline
-      >>
-      >> # Initialize Cline. COMM_ENV is an environment
-      >> # variable specifying a directory where the files
-      >> # are stored. '.comm' is the name of a directory
-      >> # under the home directory that will be used by
-      >> # default.
-      >>
-      >> with cline.Cline('COMM_ENV', '.comm', 'command', args) as cl:
-      >>
-      >>   # register parameters
-      >>   cl.register('device', inp.Cline.GLOBAL, inp.Cline.HIDE)
-      >>   cl.register('npoint', inp.Cline.LOCAL,  inp.Cline.PROMPT)
-      >>   cl.register('output', inp.Cline.LOCAL,  inp.Cline.PROMPT)
-      >>
-      >>   device = cl.get_value('device', 'plot device', '/xs')
-      >>   npoint = cl.get_value('npoint', 'number of points', 10, 1, 100)
-      >>   output = cl.get_value('output', 'output file', 'save.dat')
-      >>
-      >> # rest of program here ...
+    """Class to handle command line inputs. In particular this allows
+    storage and retrieval of input parameter values from files which
+    allows different scripts to communicate parameters to each other
+    through 'global' defaults, and commands to have a 'memory' between
+    different invocations. To use the class you first create an
+    instance, then register each parameter name, and finally get the
+    input, either from the user, default values or disk. Cline can be
+    (and is best) invoked as a context manager with "with" as shown
+    below.  This defines a clean 'get inputs' section and saves the
+    values when it goes out of context.
 
     :class:`Cline` objects define the four static variables GLOBAL, LOCAL,
     PROMPT, HIDE which should be used when registering parameters to define
@@ -206,33 +174,33 @@ class Cline:
     HIDE = 4
 
     def __init__(self, direnv, defdir, cname, args):
-        """
-        Initialize an Cline class object
+        """Initialize an Cline class object
 
         Arguments::
 
-           direnv : string
-              environment variable pointing at a directory where default
-              files will be stored.
+           direnv : str
+              environment variable pointing at a directory where
+              default files will be stored.
 
-           defdir : string
-              default directory (sub-directory of HOME) if the enviroment
-              variable 'direnv' is not defined
+           defdir : str
+              default directory (sub-directory of HOME) if the
+              enviroment variable 'direnv' is not defined
 
-           cname : string
-              the command name, which is used to generate the local defaults
-              file name. If cname=None, no attempt to read or save defaults
-              will be made. This allows the programmatic equivalent of entering
-              'nodefs' on the command line.
+           cname : str
+              the command name, which is used to generate the local
+              defaults file name. If cname=None, no attempt to read or
+              save defaults will be made. This allows the programmatic
+              equivalent of entering 'nodefs' on the command line.
 
-           args : list of strings
-              command-line arguments. The first one must be the command name. Their
-              order must match the order in which the parameters are prompted.
+           args : list of str
+              command-line arguments. The first one must be the
+              command name. Their order must match the order in which
+              the parameters are prompted.
 
         """
 
-        # Extract special keywords 'nodefs', 'prompt' and 'list'
-        # from argument list, and set flags.
+        # Extract special keywords 'nodefs', 'prompt' and 'list' from
+        # argument list, and set flags.
 
         if "nodefs" in args:
             self._nodefs = True
@@ -264,7 +232,8 @@ class Cline:
 
             if direnv is None and defdir is None:
                 raise ClineError(
-                    "no default file environment variable or directory name supplied"
+                    "no default file environment variable"
+                    " or directory name supplied"
                 )
 
             if direnv is not None and direnv in os.environ:
@@ -324,7 +293,8 @@ command line to check.""", ClineWarning,
                 p, v = arg.split("=", 1)
                 if p in self._pbynam:
                     raise ClineError(
-                        "parameter = " + p + " defined more than once in argument list."
+                        "parameter = " + p +
+                        " defined more than once in argument list."
                     )
                 self._pbynam[p] = v
             else:
@@ -335,8 +305,9 @@ command line to check.""", ClineWarning,
         self._usedef = False
 
     def list(self):
-        """Returns with a list of strings listing all the parameter names and values
-        separated by carriage returns. Unset parameters are skipped.
+        """Returns with a list of strings listing all the parameter names and
+        values separated by carriage returns. Unset parameters are
+        skipped.
 
         """
 
@@ -428,9 +399,9 @@ command line to check.""", ClineWarning,
             signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     def prompt_state(self):
-        """Says whether prompting is being forced or not. Note the propting state does
-        not change once an Cline is initialized, being fixed by the presence
-        of 'PROMPT' on the command line or not.
+        """Says whether prompting is being forced or not. Note the propting
+        state does not change once an Cline is initialized, being
+        fixed by the presence of 'PROMPT' on the command line or not.
 
         Returns True if prompting is being forced.
 
@@ -439,12 +410,12 @@ command line to check.""", ClineWarning,
 
     def register(self, param, g_or_l, p_or_h):
         """Registers a parameter as one to be expected and defines basic
-        properties. You must call this once for every parameter that you might
-        call 'get_value' for.
+        properties. You must call this once for every parameter that
+        you might call 'get_value' for.
 
         Arguments:
 
-          param : string
+          param : str
               parameter name. Must have no spaces, equal signs or quotes.
 
           g_or_l : int
@@ -476,24 +447,31 @@ command line to check.""", ClineWarning,
             raise ClineError("Parameter = " + param + " is illegal.")
 
         if g_or_l != Cline.GLOBAL and g_or_l != Cline.LOCAL:
-            raise ClineError("g_or_l must either be Cline.GLOBAL or Cline.LOCAL")
+            raise ClineError(
+                "g_or_l must either be Cline.GLOBAL or Cline.LOCAL"
+            )
 
         if p_or_h != Cline.PROMPT and p_or_h != Cline.HIDE:
-            raise ClineError("p_or_h must either be Cline.PROMPT or Cline.HIDE")
+            raise ClineError(
+                "p_or_h must either be Cline.PROMPT or Cline.HIDE"
+            )
 
         if param in self._rpars:
-            raise ClineError("parameter = " + param + " has already been registered.")
+            raise ClineError(
+                "parameter = " + param + " has already been registered."
+            )
 
         self._rpars[param] = {"g_or_l": g_or_l, "p_or_h": p_or_h}
 
     def set_default(self, param, defval):
-        """Set the default value of a parameter automatically. This is often useful
-        for changing hidden parameters on the fly.
+        """Set the default value of a parameter automatically. This is often
+        useful for changing hidden parameters on the fly.
 
         """
         if param not in self._rpars:
             raise ClineError(
-                'set_default: parameter = "' + param + '" has not been registered.'
+                'set_default: parameter = "' + param +
+                '" has not been registered.'
             )
 
         if self._rpars[param]["g_or_l"] == Cline.GLOBAL:
@@ -502,13 +480,14 @@ command line to check.""", ClineWarning,
             self._lpars[param] = defval
 
     def get_default(self, param, noval=None):
-        """
-        Gets the current default value of a parameter called 'param'. Comes back
-        with 'noval' if there is no value set.
+        """Gets the current default value of a parameter called
+        'param'. Comes back with 'noval' if there is no value set.
+
         """
         if param not in self._rpars:
             raise ClineError(
-                'set_default: parameter = "' + param + '" has not been registered.'
+                'set_default: parameter = "' + param +
+                '" has not been registered.'
             )
 
         if self._rpars[param]["g_or_l"] == Cline.GLOBAL:
@@ -524,11 +503,12 @@ command line to check.""", ClineWarning,
             multipleof=None, ignore=None,
             enforce=True
     ):
-        """Gets the value of a parameter, either from the command arguments, or by
-        retrieving default values or by prompting the user as required. This
-        is the main function of Cline. The value obtained is used to update
-        the defaults which, if 'nodefs' has not been defined, are written to
-        disk at the end of the command.
+        """Gets the value of a parameter, either from the command arguments,
+        or by retrieving default values or by prompting the user as
+        required. This is the main function of Cline. The value
+        obtained is used to update the defaults which, if 'nodefs' has
+        not been defined, are written to disk at the end of the
+        command.
 
         Parameters:
 
@@ -544,12 +524,14 @@ command line to check.""", ClineWarning,
              possibilities)
 
           minval : same as defval's type
-             the minimum value of the parameter to allow. This is also the
-             value that will be used if the user type "min". See also "enforce".
+             the minimum value of the parameter to allow. This is also
+             the value that will be used if the user type "min". See
+             also "enforce".
 
           maxval : same as defval's type
-             the maximum value of the parameter to allow. This is also the
-             value that will be used if the user type "max". See also "enforce".
+             the maximum value of the parameter to allow. This is also
+             the value that will be used if the user type "max". See
+             also "enforce".
 
           lvals : list
              list of possible values (exact matching used)
@@ -563,54 +545,58 @@ command line to check.""", ClineWarning,
              (integers only)
 
           ignore : same as defval | None
-             a string value that will cause the routine to immediately return
-             with a None. The idea is to enable ignoring of parameter values
-             based on checking for None later in the calling code. For Fname
-             inputs in particular, this skips any checks on the existence of
-             files. If used, one should put the string needed to match the value
-             of ignore in the prompt. The usual value used in the hipercam
-             pipeline is 'none'.
+             a string value that will cause the routine to immediately
+             return with a None. The idea is to enable ignoring of
+             parameter values based on checking for None later in the
+             calling code. For Fname inputs in particular, this skips
+             any checks on the existence of files. If used, one should
+             put the string needed to match the value of ignore in the
+             prompt. The usual value used in the hipercam pipeline is
+             'none'.
 
           enforce : bool
-             controls whether "min" and "max" are used to prevent user input
-             outside the range. In some case one really does not want input
-             outside of min and max, whereas in others, it would not matter
-             and "min" and "max" are mainly as guidance.
+             controls whether "min" and "max" are used to prevent user
+             input outside the range. In some case one really does not
+             want input outside of min and max, whereas in others, it
+             would not matter and "min" and "max" are mainly as
+             guidance.
 
-        Data types: at the moment, only certain data types are recognised by
-        this routine. These are the standard numerical types, 'int', 'long',
-        'float', the logical type 'bool' (which can be set with any of, case
-        insensitively, 'true', 'yes', 'y', '1' (all True), or 'false', 'no',
-        'n', '0' (all False)), strings, tuples, lists, and hipercam.cline.Fname
-        objects to represent filenames with specific extensions. In the case
-        of tuples and lists, it is the default value 'defval' which sets the type.
+        Data types: at the moment, only certain data types are
+        recognised by this routine. These are the standard numerical
+        types, 'int', 'long', 'float', the logical type 'bool' (which
+        can be set with any of, case insensitively, 'true', 'yes',
+        'y', '1' (all True), or 'false', 'no', 'n', '0' (all False)),
+        strings, tuples, lists, and hipercam.cline.Fname objects to
+        represent filenames with specific extensions. In the case of
+        tuples and lists, it is the default value 'defval' which sets
+        the type.
 
         """
 
         if param not in self._rpars:
             raise ClineError(
-                'parameter = "{:s}" has not been registered.'.format(param.upper())
+                f'parameter = "{param.upper()}" has not been registered.'
             )
 
         if lvals != None and defval not in lvals:
             raise ClineError(
-                "default = {!s} not in allowed list = {!s}".format(defval, lvals)
+                f"default = {defval} not in allowed list = {lvals}"
             )
 
         # Now get the parameter value by one of three methods
 
         if param in self._pbynam:
-            # get value from name/value pairs read from command line arguments
-            # of the form param=value
+            # get value from name/value pairs read from command line
+            # arguments of the form param=value
             value = self._pbynam[param]
 
         elif self.narg < len(self._pbypos) and (
             self._prompt or self._rpars[param]["p_or_h"] == Cline.PROMPT
         ):
-            # get value from bare values in the command line such as '23' '\\'
-            # indicates use the default value and also to use defaults for any
-            # other unspecified parameters that come later (_usedef set to
-            # True)
+            # get value from bare values in the command line such as
+            # '23' '\\' indicates use the default value and also to
+            # use defaults for any other unspecified parameters that
+            # come later (_usedef set to True)
             if self._pbypos[self.narg] == "\\":
                 if (
                     self._rpars[param]["g_or_l"] == Cline.GLOBAL
@@ -618,7 +604,8 @@ command line to check.""", ClineWarning,
                 ):
                     value = self._gpars[param]
                 elif (
-                    self._rpars[param]["g_or_l"] == Cline.LOCAL and param in self._lpars
+                    self._rpars[param]["g_or_l"] == Cline.LOCAL and \
+                        param in self._lpars
                 ):
                     value = self._lpars[param]
                 else:
@@ -630,9 +617,11 @@ command line to check.""", ClineWarning,
 
         else:
             # load default from values read from file or the initial value
-            if self._rpars[param]["g_or_l"] == Cline.GLOBAL and param in self._gpars:
+            if self._rpars[param]["g_or_l"] == Cline.GLOBAL and \
+               param in self._gpars:
                 value = self._gpars[param]
-            elif self._rpars[param]["g_or_l"] == Cline.LOCAL and param in self._lpars:
+            elif self._rpars[param]["g_or_l"] == Cline.LOCAL and \
+                 param in self._lpars:
                 value = self._lpars[param]
             else:
                 value = defval
@@ -672,9 +661,7 @@ command line to check.""", ClineWarning,
                             print(lvals)
                         if isinstance(defval, (list, tuple)) and fixlen:
                             print(
-                                ("You must enter exactly" " {:d} values").format(
-                                    len(defval)
-                                )
+                                f"You must enter exactly {len(defval)} values"
                             )
                         print()
                     elif reply != "":
@@ -684,10 +671,8 @@ command line to check.""", ClineWarning,
                             and len(reply.split()) != len(defval)
                         ):
                             print(
-                                (
-                                    "You must enter exactly {:d} values."
-                                    " [You only entered {:d}]"
-                                ).format(len(defval), len(reply.split()))
+                                f"You must enter exactly {len(defval)} values."
+                                " [You only entered {len(reply.split()}]"
                             )
                             reply = "?"
                         else:
@@ -700,8 +685,8 @@ command line to check.""", ClineWarning,
                 self._lpars[param] = ignore
             return None
 
-        # at this stage we have the value, now try to convert to the right
-        # type according to the type of 'defval'
+        # at this stage we have the value, now try to convert to the
+        # right type according to the type of 'defval'
         try:
             if isinstance(defval, Fname):
                 # run Fname checks
@@ -714,30 +699,25 @@ command line to check.""", ClineWarning,
 
             elif isinstance(defval, bool):
                 if isinstance(value, str):
-                    if (
-                        value.lower() == "true"
-                        or value.lower() == "yes"
-                        or value.lower() == "1"
-                        or value.lower() == "y"
-                    ):
+                    if value.lower() == "true" or \
+                       value.lower() == "yes" or \
+                       value.lower() == "1" or \
+                       value.lower() == "y":
                         value = True
-                    elif (
-                        value.lower() == "false"
-                        or value.lower() == "no"
-                        or value.lower() == "0"
-                        or value.lower() == "n"
-                    ):
+                    elif value.lower() == "false" or \
+                         value.lower() == "no" or \
+                         value.lower() == "0" or \
+                         value.lower() == "n":
                         value = False
                     else:
                         raise ClineError(
-                            'could not translate "'
-                            + value
-                            + '" to a boolean True or False.'
+                            f'could not translate "{value}"'
+                            ' to a boolean True or False.'
                         )
             elif isinstance(defval, int):
                 # 'max' and 'min' will set to the maximum and minimum
-                # values if they have been set handle these here before
-                # attempting to convert to a float
+                # values if they have been set handle these here
+                # before attempting to convert to a float
                 if isinstance(value, str):
                     if value == "min":
                         if minval is not None:
@@ -754,8 +734,8 @@ command line to check.""", ClineWarning,
 
             elif isinstance(defval, float):
                 # 'max' and 'min' will set to the maximum and minimum
-                # values if they have been set handle these here before
-                # attempting to convert to a float
+                # values if they have been set handle these here
+                # before attempting to convert to a float
                 if isinstance(value, str):
                     if value == "min":
                         if minval is not None:
@@ -783,7 +763,7 @@ command line to check.""", ClineWarning,
             else:
                 raise ClineError(
                     "did not recognize the data type of the default"
-                    " supplied for parameter {param} = {type(defval)}"
+                    f" supplied for parameter {param} = {type(defval)}"
                 )
 
         except ValueError as err:
@@ -791,18 +771,24 @@ command line to check.""", ClineWarning,
 
         # ensure value is within range
         if minval != None and value < minval and enforce:
-            raise ClineError(param + " = " + str(value) + " < " + str(minval))
+            raise ClineError(
+                f"{param} = {value} < {minval}"
+            )
         elif maxval != None and value > maxval and enforce:
-            raise ClineError(param + " = " + str(value) + " > " + str(maxval))
+            raise ClineError(
+                f"{param} = {value} > {maxval}"
+            )
 
         # and that it is an OK value
         if lvals != None and value not in lvals:
             raise ClineError(
-                str(value) + " is not one of the allowed values = " + str(lvals)
+                f"{value} is not one of the allowed values = {lvals}"
             )
 
         if multipleof != None and value % multipleof != 0:
-            raise ClineError(str(value) + " is not a multiple of " + str(multipleof))
+            raise ClineError(
+                f"{value} is not a multiple of {multipleof}"
+            )
 
         # update appropriate set of defaults. In the case of Fnames,
         # strip the extension
@@ -818,14 +804,14 @@ command line to check.""", ClineWarning,
                 self._lpars[param] = value
 
         if self._list:
-            print(param, "=", value)
+            print(f"{param} = {value}")
 
         return value
 
     def get_rest(self):
-        """
-        Returns any unused command-line arguments as a list or None
-        if there aren't any
+        """Returns any unused command-line arguments as a list or None if
+        there aren't any
+
         """
         if self.narg < len(self._pbypos):
             return self._pbypos[self.narg :]
@@ -853,25 +839,25 @@ class Fname(str):
 
     def __new__(cls, root, ext="", ftype=OLD, exist=True):
         """Constructor distinct from __init__ because str is immutable. In the
-        following text items in capitals such as 'OLD' are static variables so
-        that one should use hipercam.cline.Fname.OLD or equivalent to refer to
-        them.
+        following text items in capitals such as 'OLD' are static
+        variables so that one should use hipercam.cline.Fname.OLD or
+        equivalent to refer to them.
 
         Arguments::
 
-          root : (string)
+          root : str
              root name of file (if it ends with 'ext', an extra 'ext' will
              not be added)
 
-          ext : (string)
+          ext : str
              extension, e.g. '.dat'
 
-          ftype : (int)
+          ftype : int
              OLD = existing or possibly existing file; NEW = new file which
              will overwrite anything existing; NOCLOBBER is same as NEW but
              there must not be an existing one of the specified name.
 
-          exist : (bool)
+          exist : bool
              If exist=True and ftype=OLD, the file :must: exist. If
              exist=False, the file may or may not exist already.
 
@@ -896,18 +882,18 @@ class Fname(str):
 
         Arguments::
 
-          root : (string)
+          root : str
              root name of file (if it ends with 'ext', an extra 'ext' will
              not be added)
 
-          ext : (string)
+          ext : str
              extension, e.g. '.dat'
 
-          ftype : (int)
+          ftype : int
              If exist=True and ftype=OLD, the file :must: exist. If
              exist=False, the file may or may not exist already.
 
-          exist : (bool)
+          exist : bool
              If True, the file must exist.
 
         ext, ftype and exist are stored as identically-named
@@ -940,15 +926,16 @@ class Fname(str):
         fname = add_extension(fname, self.ext)
 
         if self.exist and self.ftype == Fname.OLD and not os.path.exists(fname):
-            raise ClineError("could not find file = " + fname)
+            raise ClineError(f"could not find file = {fname}")
 
         if self.ftype == Fname.NOCLOBBER and os.path.exists(fname):
-            raise ClineError("file = " + fname + " already exists")
+            raise ClineError(f"file = {fname} already exists")
 
         return fname
 
     def noext(self, fname):
-        """Returns the suggested file name, `fname`, with the extension removed"""
+        """Returns the suggested file name, `fname`, with the extension
+        removed"""
         if len(self.ext) and fname.endswith(self.ext):
             return fname[: -len(self.ext)]
         else:
