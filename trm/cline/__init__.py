@@ -1,4 +1,4 @@
-"""enable scripts to remember parameter values
+"""enables scripts to remember parameter values
 
 It can be useful to have scripts that remember their parameters from
 one invocation to the next. The package enables such a facility by
@@ -6,23 +6,23 @@ storage and retrieval of parameter values in disk files. It provides a
 way to define named parameters, default values and ranges, and allows
 parameters to be hidden by default if need be.
 
-Example code, in which three parameters are prompted for ('device',
-'npoint', 'output'). The values input by the user will be stored in a
-file located in a directory pointed to by environment variable
-'COMM_EG_ENV', or, if that is undefined, in a sub-directory of the
-home directory called '.comm_eg'. ::
+Example in which three parameters are prompted for ('device',
+'npoint', 'output'). 'device' is hidden by default. The values input
+by the user will be stored in a file located in a directory pointed to
+by environment variable 'COMM_EG_ENV', or, if that is undefined, in a
+sub-directory of the home directory called '.comm_eg'. ::
 
-  >> import sys
   >> from trm import cline
+  >> from trm.cline import Cline
   >>
-  >> # get command name 
+  >> # get command name
   >> command, args = cline.script_args()
   >>
   >> # invoking as a context manager ensures that even if
   >> # the script is interrupted, the parameter values are
   >> # saved to disk
   >>
-  >> with cline.Cline('COMM_EG_ENV', '.comm_eg', commad, args) as cl:
+  >> with Cline('COMM_EG_ENV', '.comm_eg', commad, args) as cl:
   >>
   >>   # register parameters
   >>   cl.register('device', Cline.GLOBAL, Cline.HIDE)
@@ -50,6 +50,12 @@ The first would prompt for 'npoint' and 'output'; the second for just
 set npoint=25, and device='/ps' from the earlier invocations; the fifth
 would prompt for all parameters and list all values input.
 
+The "LOCAL" and "GLOBAL" you will see above control where the
+parameter value is stored. If "GLOBAL" then the parameter is stored in
+a file that might also be accessed by other scripts, allowing parameters
+to be shared by more than one script. "LOCAL" means store in a file
+specific to the actual script.
+
 A number of special keyword arguments can be used on the command line.
 They are::
 
@@ -71,12 +77,32 @@ command line, then it would be prompted in the form:
 
   npoint - number of points [10]: <user input here>
 
-If '25' was entered, then next time round, you would get 
+If '25' was entered, then next time round, you would get
 
   npoint - number of points [25]: <user input here>
 
 Hitting <CR> as the input would retain the '25', hence the script
 "remembers" old values, saving a lot of typing.
+
+File name prompts can be simply as a string as in the example above,
+but there is a also special class, :class:`trm.cline.Fname`, which
+helps check on the existence of files if need be. A script prompting
+for one (pre-existing) filename might start with::
+
+  >> from trm import cline
+  >> from trm.cline import Cline
+  >>
+  >> command, args = cline.script_args()
+  >>
+  >> with cline.Cline('COMM_EG_ENV', '.comm_eg', commad, args) as cl:
+  >>    cl.register('fname', Cline.LOCAL, Cline.PROMPT)
+  >>    fname = cl.get_value(
+  >>       'fname', 'name of text file',
+  >>       cline.Fname("file.txt", ".txt")
+  >>    )
+
+This would enforce the extension ".txt" so that you could type "file"
+and it would be assumed to be "file.txt".
 
 """
 
