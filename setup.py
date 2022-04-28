@@ -1,17 +1,46 @@
-from distutils.core import setup
+import os
+from setuptools import setup
+
+here = os.path.abspath(os.path.dirname(__file__))
+
+# Get the long description from the README file
+with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(name='trm.cline',
       version='1.0.0',
-      packages = ['trm'],
+      packages = ['trm.cline'],
 
       # metadata
       author='Tom Marsh',
       author_email='t.r.marsh@warwick.ac.uk',
-      description="Python command line parameter handling",
-      url='http://www.astro.warwick.ac.uk/',
-      long_description="""
-cline defines a class to handle command line scripts with parameters with defaults that get saved to disk.
-""",
+      description="Allows scripts to remember parameter values",
+      long_description=long_description,
+
+    # Choose your license
+    license='BSD',
+
+    classifiers=[
+        # How mature is this project? Common values are
+        #   3 - Alpha
+        #   4 - Beta
+        #   5 - Production/Stable
+        'Development Status :: 5 - Production/Stable',
+
+        # Indicate who your project is intended for
+        'Intended Audience :: General',
+
+        # Pick your license as you wish (should match "license" above)
+        'License :: OSI Approved :: BSD License',
+
+        # Specify the Python versions you support here. In particular, ensure
+        # that you indicate whether you support Python 2, Python 3 or both.
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+    ],
+
+    # Uses f-strings which only came in python v3.6
+    python_requires='>=3.6',
 
 )
 

@@ -1,46 +1,54 @@
-# Licensed under a 3-clause BSD style license - see LICENSE.rst
-
-"""command line parameter storage and prompting for scripts.
+"""enable scripts to remember parameter values
 
 It can be useful to have scripts that remember their parameters from
 one invocation to the next. The package enables such a facility by
 storage and retrieval of parameter values in disk files. It provides a
-way to define named parameters, defaults and ranges, and allows
+way to define named parameters, default values and ranges, and allows
 parameters to be hidden by default if need be.
 
-Example code, in which three para::
+Example code, in which three parameters are prompted for ('device',
+'npoint', 'output'). The values input by the user will be stored in a
+file located in a directory pointed to by environment variable
+'COMM_EG_ENV', or, if that is undefined, in a sub-directory of the
+home directory called '.comm_eg'. ::
 
   >> import sys
-  >> from trm.cline import Cline
+  >> from trm import cline
   >>
-  >> # get command name
-  >> comm = sys.argv.pop(0) 
+  >> # get command name 
+  >> command, args = cline.script_args()
   >>
-  >> with Cline('COMM_ENV', '.comm', comm, sys.argv) as cl:
+  >> # invoking as a context manager ensures that even if
+  >> # the script is interrupted, the parameter values are
+  >> # saved to disk
+  >>
+  >> with cline.Cline('COMM_EG_ENV', '.comm_eg', commad, args) as cl:
   >>
   >>   # register parameters
   >>   cl.register('device', Cline.GLOBAL, Cline.HIDE)
   >>   cl.register('npoint', Cline.LOCAL, Cline.PROMPT)
   >>   cl.register('output', Cline.LOCAL, Cline.PROMPT)
   >>
-  >>   # get inputs
+  >>   # get their values
   >>   device = cl.get_value('device', 'plot device', '/xs')
   >>   npoint = cl.get_value('npoint', 'number of points', 10, 1, 100)
   >>   output = cl.get_value('output', 'output file', 'save.dat')
   >>
   >> # rest of program follows ...
 
-If this is invoked in a script called 'script.py' then the following are
-all ways to invoke it:
+If this is invoked in a script called 'script.py' then the following
+are all ways to invoke it:
 
 script.py<cr>
 script.py device=/ps npoint=20<cr>
 script.py device=/ps \\<cr>
 script.py 25<cr>
+script.py prompt list<cr>
 
 The first would prompt for 'npoint' and 'output'; the second for just
 'output'; the third would not prompt for any of them; the fourth would
-set npoint=25, and device='/ps' from the earlier invocations.
+set npoint=25, and device='/ps' from the earlier invocations; the fifth
+would prompt for all parameters and list all values input.
 
 A number of special keyword arguments can be used on the command line.
 They are::
@@ -53,8 +61,22 @@ They are::
   prompt : forces prompting for all variables not supplied via the argument
       list passed on creation of Cline objects.
 
-When you get prompting, <tab> allows you to complete filenames. Entering '?'
-gives the parameter range if any has been supplied.
+When you get prompting, <tab> allows you to complete
+filenames. Entering '?'  gives the parameter range if any has been
+supplied.
+
+When 'npoint' was prompted above, a default value [1], and a minimum
+and maximum [1 and 10] were supplied. If npoint is not given on the
+command line, then it would be prompted in the form:
+
+  npoint - number of points [10]: <user input here>
+
+If '25' was entered, then next time round, you would get 
+
+  npoint - number of points [25]: <user input here>
+
+Hitting <CR> as the input would retain the '25', hence the script
+"remembers" old values, saving a lot of typing.
 
 """
 
@@ -77,22 +99,28 @@ readline.parse_and_bind("tab: complete")
 # readline.set_completer(complete)
 
 def add_extension(fname, ext):
-    """Add extension ext to a file name if it is not already there, and
-    returns the revised name
+    """Add an extension ext to a file name if it is not already there, and
+    returns the revised name. e.g. if fname='datafile' and ext='.dat', this
+    returns 'datafile.dat'. If fname='datafile.dat', it still returns just
+    'datafile.dat'.
 
+    See: sub_extension
     """
     if len(ext) and not fname.endswith(ext):
-        return "{}{}".format(fname, ext)
+        return f"{fname}{ext}"
     else:
         return fname
 
 def sub_extension(fname, ext):
-    """Subtracts extension ext from a file name if it is present, and
-    returns the revised name
+    """Strips the extension 'ext' from a file name if it is present, and
+    returns the revised name. i.e. fname='datafile.dat', ext='.dat'
+    returns 'datafile'.
+
+    See: add_extension
 
     """
     if fname.endswith(ext):
-        return fname[: -len(ext)]
+        return fname[:-len(ext)]
     else:
         return fname
 
@@ -102,12 +130,20 @@ def clist(command):
     a simple string split is that it allows you to use double quotes
     to get strings with spaces through. Returns a list of strings.
 
+    e.g. You can pass it a string like
+
+    '120 "IP Peg" name=me 43.5'
+
+    which will become a list:
+
+    ['120','IP Peg','name=me','43.5']
+
     """
 
     cl = re.findall('"[^"]*"|\S+', command)
     return [c.lstrip('"').rstrip('"') for c in cl]
 
-def script_args(args):
+def script_args(args=None):
     """This is a small helper method to use at the start of an entry
     point script.
 
@@ -138,9 +174,9 @@ class Cline:
     different invocations. To use the class you first create an
     instance, then register each parameter name, and finally get the
     input, either from the user, default values or disk. Cline can be
-    (and is best) invoked as a context manager with "with" as shown
-    below.  This defines a clean 'get inputs' section and saves the
-    values when it goes out of context.
+    (and is best) invoked as a context manager with "with". This
+    saves the values when it goes out of context, which includes when
+    a script is aborted during parameter entry.
 
     :class:`Cline` objects define the four static variables GLOBAL, LOCAL,
     PROMPT, HIDE which should be used when registering parameters to define
@@ -510,7 +546,7 @@ command line to check.""", ClineWarning,
         not been defined, are written to disk at the end of the
         command.
 
-        Parameters:
+        Arguments::
 
           param : str
              parameter name.
