@@ -7,16 +7,19 @@ here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
-setup(name='trm.cline',
-      version='1.0.0',
-      packages = ['trm.cline'],
+setup(
+    name='trm.cline',
+    version='1.0.0',
+    packages = ['trm.cline'],
 
-      # metadata
-      author='Tom Marsh',
-      author_email='t.r.marsh@warwick.ac.uk',
-      description="Allows scripts to remember parameter values",
-      long_description=long_description,
-
+    # metadata
+    author='Tom Marsh',
+    author_email='t.r.marsh@warwick.ac.uk',
+    description="Allows scripts to remember parameter values",
+    long_description=long_description,
+    long_description_content_type='text/x-rst',
+    url='https://github.com/trmrsh/trm-cline',
+    
     # Choose your license
     license='BSD',
 
@@ -28,7 +31,7 @@ setup(name='trm.cline',
         'Development Status :: 5 - Production/Stable',
 
         # Indicate who your project is intended for
-        'Intended Audience :: General',
+        'Intended Audience :: Science/Research'
 
         # Pick your license as you wish (should match "license" above)
         'License :: OSI Approved :: BSD License',
@@ -37,6 +40,9 @@ setup(name='trm.cline',
         # that you indicate whether you support Python 2, Python 3 or both.
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
 
     # Uses f-strings which only came in python v3.6
