@@ -1,10 +1,8 @@
 import os
 from setuptools import setup
 
-here = os.path.abspath(os.path.dirname(__file__))
-
 # Get the long description from the README file
-with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
+with open('README.rst') as f:
     long_description = f.read()
 
 setup(
@@ -15,7 +13,7 @@ setup(
     # metadata
     author='Tom Marsh',
     author_email='t.r.marsh@warwick.ac.uk',
-    description="Allows scripts to remember parameter values",
+    description="Allows scripts to remember parameter input values",
     long_description=long_description,
     long_description_content_type='text/x-rst',
     url='https://github.com/trmrsh/trm-cline',
@@ -31,7 +29,8 @@ setup(
         'Development Status :: 5 - Production/Stable',
 
         # Indicate who your project is intended for
-        'Intended Audience :: Science/Research'
+        'Intended Audience :: Science/Research',
+        'Topic :: Software Development',
 
         # Pick your license as you wish (should match "license" above)
         'License :: OSI Approved :: BSD License',
