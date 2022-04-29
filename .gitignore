@@ -1,3 +1,7 @@
 *.pyc
 build
 build/*
+dist
+dist/*
+trm.cline.egg-info
+trm.cline.egg-info/*
