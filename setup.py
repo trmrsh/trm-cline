@@ -1,9 +1,12 @@
 import os
 from setuptools import setup
 
-# Get the long description from the README file
+# Read files used for the long description
 with open('README.rst') as f:
-    long_description = f.read()
+    readme = f.read()
+
+with open('HISTORY.rst') as f:
+    history = f.read()
 
 setup(
     name='trm.cline',
@@ -14,10 +17,10 @@ setup(
     author='Tom Marsh',
     author_email='t.r.marsh@warwick.ac.uk',
     description="Allows scripts to remember parameter input values",
-    long_description=long_description,
+    long_description=readme + '\n\n' + history,
     long_description_content_type='text/x-rst',
     url='https://github.com/trmrsh/trm-cline',
-    
+
     # Choose your license
     license='BSD',
 
