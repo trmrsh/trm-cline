@@ -1,19 +1,22 @@
 trm.cline
 =========
 
-trm.cline is a Python module to handle command-line parameters
-and internal prompting for parameters using disk files to give
-scripts a "memory" so that they recover the parameter values used
-from the previous invocvation of the script.
+trm.cline handles parameter input for Python scripts, interpreting
+those entered on the command line, and internally prompting for those
+not given according to names defined within the scripts. It uses disk
+files to save the parameter values so that they can be recalled as
+defaults on next invocation, potentially saving much typing. It also
+allows multiple scripts to share parameters.
 
-Install with:
+Install with::
 
-pip install .
+ pip install .
 
-if in the directory with the setup.py file. Use "--user" if you
-want a local install. See 'pip' for other options.
+or::
 
-Tom Marsh
+ pip install . --user
 
+if you don't have root access.
 
+* Free software: BSD license
 
