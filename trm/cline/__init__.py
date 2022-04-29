@@ -1,60 +1,73 @@
-"""enables scripts to remember parameter values
+"""enables scripts to remember parameter input values between invocations
 
 It can be useful to have scripts that remember their parameters from
 one invocation to the next. The package enables such a facility by
 storage and retrieval of parameter values in disk files. It provides a
 way to define named parameters, default values and ranges, and allows
-parameters to be hidden by default if need be.
+parameters to be hidden by default if need be. It is also designed for
+the case of a set of scripts sharing a common purpose, e.g. to aid
+analysis of a specific type of data perhaps. In such a case, being able
+to share parameter values, e.g. the name of a particular dataset,
+between scripts can be very helpful.
 
-Example in which three parameters are prompted for ('device',
+Here is an example in which three parameters are prompted for ('device',
 'npoint', 'output'). 'device' is hidden by default. The values input
 by the user will be stored in a file located in a directory pointed to
 by environment variable 'COMM_EG_ENV', or, if that is undefined, in a
-sub-directory of the home directory called '.comm_eg'. ::
+sub-directory of the home directory called '.comm_eg'. The key class that
+does most of the work is :class:`trm.cline.Cline`. It's invoked as a
+context manager so that on any interruption of execution it tidies up properly
+and save the parameters to disk::
 
   >> from trm import cline
   >> from trm.cline import Cline
   >>
-  >> # get command name
+  >> # get command name and arguments [extracted from sys.argv
+  >> # in this instance]
   >> command, args = cline.script_args()
   >>
-  >> # invoking as a context manager ensures that even if
-  >> # the script is interrupted, the parameter values are
-  >> # saved to disk
-  >>
+  >> # invoke Cline as a context manager
   >> with Cline('COMM_EG_ENV', '.comm_eg', commad, args) as cl:
   >>
-  >>   # register parameters
+  >>   # register the parameter names and properties
+  >>   # 'device' is GLOBAL meaning it can be shared
+  >>   # with other scripts.
   >>   cl.register('device', Cline.GLOBAL, Cline.HIDE)
   >>   cl.register('npoint', Cline.LOCAL, Cline.PROMPT)
   >>   cl.register('output', Cline.LOCAL, Cline.PROMPT)
   >>
-  >>   # get their values
-  >>   device = cl.get_value('device', 'plot device', '/xs')
+  >>   # get their values [string, integer, string]
+  >>   device = cl.get_value('device', 'plot device', 'terminal')
   >>   npoint = cl.get_value('npoint', 'number of points', 10, 1, 100)
   >>   output = cl.get_value('output', 'output file', 'save.dat')
   >>
-  >> # rest of program follows ...
+  >> # Leave the context manager; rest of program follows
+  >> print(device,npoint,output)
 
 If this is invoked in a script called 'script.py' then the following
 are all ways to invoke it:
 
 script.py<cr>
-script.py device=/ps npoint=20<cr>
-script.py device=/ps \\<cr>
+script.py device=plot.png npoint=20<cr>
+script.py device=plot.png \\<cr>
 script.py 25<cr>
 script.py prompt list<cr>
 
 The first would prompt for 'npoint' and 'output'; the second for just
 'output'; the third would not prompt for any of them; the fourth would
-set npoint=25, and device='/ps' from the earlier invocations; the fifth
-would prompt for all parameters and list all values input.
+set npoint=25, and device='plot.png' from the earlier invocations; the
+fifth would prompt for all parameters and list all values input.
 
 The "LOCAL" and "GLOBAL" you will see above control where the
 parameter value is stored. If "GLOBAL" then the parameter is stored in
 a file that might also be accessed by other scripts, allowing parameters
 to be shared by more than one script. "LOCAL" means store in a file
 specific to the actual script.
+
+"HIDE" and "PROMPT" control whether a parameter is prompted by
+default.  A special keyword 'prompt' (see next) is needed to reveal a
+hidden parameter, although such parameters can also be set from the
+the command line if explicitly named.
 
 A number of special keyword arguments can be used on the command line.
 They are::
@@ -82,7 +95,8 @@ If '25' was entered, then next time round, you would get
   npoint - number of points [25]: <user input here>
 
 Hitting <CR> as the input would retain the '25', hence the script
-"remembers" old values, saving a lot of typing.
+"remembers" old values which appears as the new default choice, saving
+a lot of typing.
 
 File name prompts can be simply as a string as in the example above,
 but there is a also special class, :class:`trm.cline.Fname`, which
@@ -103,6 +117,19 @@ for one (pre-existing) filename might start with::
 
 This would enforce the extension ".txt" so that you could type "file"
 and it would be assumed to be "file.txt".
+
+See :func:`trm.cline.Cline.get_value` for supported data types for input
+which include standard numerical data types, strings, lists, tuples and
+a special type :class:`trm.cline.Fname` for file input.
+
+.. Note::
+
+   It is possible on rare occasions to corrupt the disk files where
+   the parameter values are stored. In such cases, navigate to the
+   directory where they are stored (e.g. the one pointed at by
+   COMM_EG_ENV or $HOME/.comm_eg if the environment variable does not
+   exist and delete the files you find there. This resets all
+   parameters to their starting defaults.
 
 """
 
